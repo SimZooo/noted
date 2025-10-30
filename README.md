@@ -1,2 +1,5 @@
-# clicards
-To add a new flashcard, edit the ~/.flashcards/.db file and add a line in the form of "QUESTION$ANSWER".
+# noted
+To create a new flashcards set do: `noted new [NAME]`
+To use a flashcard set do: `noted [NAME]`
+To list all flashcards sets: `noted list`
+To delete a flashcard set: `noted remove [NAME]`
