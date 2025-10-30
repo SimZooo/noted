@@ -1,0 +1,130 @@
+#!/bin/bash
+CARDS_DIR="$HOME/.flashcards"
+curr_card=0
+question_box_width=40
+question_box_height=5
+seperation_delimiter="$"
+correct_count=0
+CORRECT_COL="\033[0;32m"
+WRONG_COL="\033[0;31m"
+NC="\033[0m"
+
+do_flashcard() {
+	line="$1"
+	db_name=$2
+
+	# Seperate flashcard values
+	question=$(echo "$line" | cut -d "$seperation_delimiter" -f 1)
+	answer=$(echo "$line" | cut -d "$seperation_delimiter" -f 2)
+
+	if [[ $question == "" || $answer == "" ]]; then
+		return;
+	fi
+
+	((curr_card++))
+
+	question_length=${#question}
+	
+	final_string="Card nr: $curr_card\n"
+	outline=""
+	outline=$(printf "%*s" $((question_box_width)) "" | tr ' ' '-')
+	final_string+="$outline"
+	
+	# Create box
+	for ((i = 0 ; i < question_box_height; i++)); do
+		num_spaces=$((question_box_width-2))
+		
+		# Insert the question value and calculate midpoint
+		if [[ $i == $(($question_box_height/2)) ]]; then
+			((num_spaces = (num_spaces - question_length)/2))
+
+			# Add a space if odd length
+			if ((question_length % 2 != 0)); then
+				right_spaces=$((num_spaces + 1))
+			else
+				right_spaces=$num_spaces
+			fi
+
+			middle_line="|$(printf "%*s" $((num_spaces)) "")$question$(printf "%*s" $((right_spaces)) "")|"
+		else
+			middle_line="|$(printf "%*s" $num_spaces "")|"
+		fi
+		final_string+="\n$middle_line"
+	done
+	
+	# Ouotput final string
+	final_string+="\n$outline"
+	echo -e "$final_string"
+
+	# Get answer
+	read -p "Answer: " ans < /dev/tty
+	echo "Correct Answer: $answer"
+
+	if [[ $ans == $answer ]]; then
+		((correct_count++))
+		printf "${CORRECT_COL}You got it right! $correct_count/$curr_card\n"
+		printf "${NC}"
+	else
+		printf "${WRONG_COL}Wrong answer! $correct_count/$curr_card\n"
+		printf "${NC}"
+	fi
+
+	read -p "Press (ENT) to go to next card" < /dev/tty
+}
+
+print_usage() {
+	echo "USAGE: clicards [COMMAND] CARDSET"
+}
+
+new_command() {
+	db_name=$1
+	new_db=""
+
+	# Check for name of new db
+	if [[ $db_name == "" ]]; then
+		print_usage
+		return;
+	fi
+
+	while true; do
+		# Read and check for exit
+		read -p "Question: " question < /dev/tty
+		if [[ $question == "done" ]]; then
+			break;
+		fi
+		read -p "Answer: " answer <  /dev/tty
+		if [[ $answer == "done" ]]; then
+			break;
+		fi
+		new_db+="$question\$$answer\n"
+
+	done
+	echo -e "$new_db" > "$CARDS_DIR/$db_name"
+}
+
+case $1 in
+	"new")
+		new_command $2
+	;;
+	"list")
+		ls $CARDS_DIR
+	;;
+	"remove")
+		if [[ "$2" == "" ]]; then
+			print_usage
+		else
+			rm "$CARDS_DIR/$2"
+		fi
+	;;
+	*)
+		# Check if a db name was specified
+		if [[ "$1" == "" ]]; then
+		    print_usage
+		else
+			while read -r line; do
+				clear
+				do_flashcard "$line"
+			done < "$CARDS_DIR/$1"
+			echo "You got $correct_count/$curr_card"
+		fi
+esac
